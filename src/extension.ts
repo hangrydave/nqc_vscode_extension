@@ -1,54 +1,48 @@
 import * as vscode from 'vscode';
-import { Uri } from 'vscode';
 
-function setupDownloadProgramCommand(context: vscode.ExtensionContext) {
+class DownloadOutput {
+    readonly stdout: string;
+    readonly stderr: string;
+    readonly error: Error;
+
+    constructor(stdout: string, stderr: string, error: Error) {
+        this.stdout = stdout;
+        this.stderr = stderr;
+        this.error = error;
+    }
 }
 
-function downloadProgram(filePath: string) {
+function downloadProgram(filePath: string): Promise<DownloadOutput> {
     const nqcDownloadCmd = `nqc -Susb:/dev/usb/legousbtower0 -d ${filePath}`;
 
-    console.log(nqcDownloadCmd);
-    const { exec } = require('child_process');
-    exec(nqcDownloadCmd, (error: Error, stdout: string, stderr: string) => {
-        if (error) {
-            console.error(`Error downloading program ${filePath}: ${error}`);
-            return;
-        }
-
-        console.log(`stdout: ${stdout}`);
-        console.error(`stderr: ${stderr}`);
-
-        // console.log("finished downloading program");
+    return new Promise((resolve, reject) => {
+        const { exec } = require('child_process');
+        exec(nqcDownloadCmd, (error: Error, stdout: string, stderr: string) => {
+            const output = new DownloadOutput(stdout, stderr, error);
+            resolve(output);
+        })
     });
 }
 
 export function activate(context: vscode.ExtensionContext) {
     const command = 'nqchighlighter.downloadProgram';
 
-    const commandHandler = (programName: string = 'program') => {
-        var workingDirectory: Uri;
-
-        if (vscode.workspace.workspaceFolders) {
-            workingDirectory = vscode.workspace.workspaceFolders[0]?.uri;
-        } else {
-            workingDirectory = vscode.Uri.file(process.cwd());
+    const commandHandler = () => {
+        const activeEditor = vscode.window.activeTextEditor;
+        if (!activeEditor || activeEditor.document.languageId != 'nqc') {
+            return vscode.window.showInformationMessage("Cannot find open NQC file to download");
         }
 
-        const options: vscode.OpenDialogOptions = {
-            defaultUri: workingDirectory,
-            canSelectMany: false,
-            openLabel: 'Open',
-            filters: {
-                'NQC files': ['nqc'],
-                'All files': ['*']
-            }
-        };
+        vscode.window.showInformationMessage("Downloading NQC file to RCX...");
 
-        vscode.window.showOpenDialog(options).then(fileUri => {
-            if (fileUri && fileUri[0]) {
-                console.log('Selected file: ' + fileUri[0].fsPath);
-                downloadProgram(fileUri[0].fsPath);
+        let fileToDownload: string = activeEditor.document.uri.fsPath;
+        downloadProgram(fileToDownload).then(output => {
+            if (output.error) {
+                vscode.window.showInformationMessage(`Error downloading NQC file: ${output.error.message}`);
+                return;
             }
+
+            vscode.window.showInformationMessage(`${output.stdout}`);
         });
     };
 
