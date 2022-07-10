@@ -13,6 +13,8 @@ class DownloadOutput {
 }
 
 function downloadProgram(filePath: string): Promise<DownloadOutput> {
+    // TODO: separate into usb-specific and serial-specific commands maybe?
+    // probably won't do it because i don't have a serial tower
     const nqcDownloadCmd = `nqc -Susb:/dev/usb/legousbtower0 -d ${filePath}`;
 
     return new Promise((resolve, reject) => {
