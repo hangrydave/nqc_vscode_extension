@@ -1,21 +1,56 @@
 import * as vscode from 'vscode';
+import { Uri } from 'vscode';
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
+function setupDownloadProgramCommand(context: vscode.ExtensionContext) {
+}
+
+function downloadProgram(filePath: string) {
+    const nqcDownloadCmd = `nqc -Susb:/dev/usb/legousbtower0 -d ${filePath}`;
+
+    console.log(nqcDownloadCmd);
+    const { exec } = require('child_process');
+    exec(nqcDownloadCmd, (error: Error, stdout: string, stderr: string) => {
+        if (error) {
+            console.error(`Error downloading program ${filePath}: ${error}`);
+            return;
+        }
+
+        console.log(`stdout: ${stdout}`);
+        console.error(`stderr: ${stderr}`);
+
+        // console.log("finished downloading program");
+    });
+}
+
 export function activate(context: vscode.ExtensionContext) {
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "helloworld-sample" is now active!');
+    const command = 'nqchighlighter.downloadProgram';
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('extension.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
+    const commandHandler = (programName: string = 'program') => {
+        var workingDirectory: Uri;
 
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World!');
-	});
+        if (vscode.workspace.workspaceFolders) {
+            workingDirectory = vscode.workspace.workspaceFolders[0]?.uri;
+        } else {
+            workingDirectory = vscode.Uri.file(process.cwd());
+        }
 
-	context.subscriptions.push(disposable);
+        const options: vscode.OpenDialogOptions = {
+            defaultUri: workingDirectory,
+            canSelectMany: false,
+            openLabel: 'Open',
+            filters: {
+                'NQC files': ['nqc'],
+                'All files': ['*']
+            }
+        };
+
+        vscode.window.showOpenDialog(options).then(fileUri => {
+            if (fileUri && fileUri[0]) {
+                console.log('Selected file: ' + fileUri[0].fsPath);
+                downloadProgram(fileUri[0].fsPath);
+            }
+        });
+    };
+
+    context.subscriptions.push(vscode.commands.registerCommand(command, commandHandler));
 }
