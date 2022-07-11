@@ -44,7 +44,7 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            vscode.window.showInformationMessage(`${output.stdout}`);
+            vscode.window.showInformationMessage('NQC file downloaded successfully');
         });
     };
 
